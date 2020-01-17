@@ -3,6 +3,8 @@
 
 #include <QFile>
 
+//#define DEBUG
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -29,7 +31,7 @@ void MainWindow::ExtractMonthInfos()
     QString yearString = ui->dateEdit->sectionText(QDateTimeEdit::YearSection);
     QStringList eventsURLs;
 
-    for(int day = 1; day <= 31; day++)
+	for(int day = 1; day <= 31; day++)
     {
         eventsURLs.clear();
         QString dayString = QString::number(day).rightJustified(2,'0');
@@ -46,19 +48,37 @@ void MainWindow::ExtractMonthInfos()
 
 void MainWindow::GetEventsURLs(QString date, QStringList& eventURLs)
 {
-    QString dateUrl = "http://villemorte.fr/agenda/" + date + "/";    
+	QString dateUrl = "https://villemorte.fr/agenda/" + date + "/";
+
+#ifdef DEBUG
+	qDebug() << dateUrl;
+#endif
 
     QNetworkAccessManager manager;
-    QNetworkReply *response = manager.get(QNetworkRequest(QUrl(dateUrl)));
+	QUrl url(dateUrl);
+	QNetworkRequest request(url);
+	request.setSslConfiguration(QSslConfiguration::defaultConfiguration());
+	QNetworkReply *response = manager.get(request);
     QEventLoop event;
     connect(response,SIGNAL(finished()),&event,SLOT(quit()));
     event.exec();
     QString html = response->readAll();
 
+#ifdef DEBUG
+	qDebug() << html;
+#endif
+
     QString tribeEventsBegin = "<div class=\"tribe-events-list-event-description tribe-events-content description entry-summary\"";
     QString tribeEventsEnd = "</div>";
     int tribeEventBeginIndex = html.indexOf(tribeEventsBegin);
     int tribeEventEndIndex = html.indexOf(tribeEventsEnd, tribeEventBeginIndex);
+
+#ifdef DEBUG
+	if(tribeEventBeginIndex == -1)
+	{
+		qDebug() << "no tribe event begin found! ";
+	}
+#endif
 
     //on parcourt le html pour récuperer les liens vers les evenements de la date
     while(tribeEventBeginIndex != -1)
